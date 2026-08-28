@@ -35,6 +35,7 @@
       ]
     ],
     "experiments": {
+      "baseUrl": "/math-recall",
       "typedRoutes": true,
       "reactCompiler": true
     }
