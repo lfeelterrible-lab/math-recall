@@ -10,6 +10,7 @@ type StudyStore = {
   hydrated: boolean;
   themeMode: ThemeMode;
   dailyNewGoal: number;
+  newGroupIndex: number;
   streak: number;
   totalReviewed: number;
   totalStudyMinutes: number;
@@ -17,6 +18,7 @@ type StudyStore = {
   hydrate: () => void;
   toggleTheme: () => void;
   setThemeMode: (mode: ThemeMode) => void;
+  advanceNewGroup: () => void;
   recordAnswer: (cardId: string, correct: boolean) => void;
   rateCard: (cardId: string, rating: RecallRating) => void;
   getProgress: (card: MathCard) => CardProgress;
@@ -28,7 +30,7 @@ const STORAGE_KEY = 'mathrecall-progress-v1';
 
 type PersistedState = Pick<
   StudyStore,
-  'themeMode' | 'dailyNewGoal' | 'streak' | 'totalReviewed' | 'totalStudyMinutes' | 'progress'
+  'themeMode' | 'dailyNewGoal' | 'newGroupIndex' | 'streak' | 'totalReviewed' | 'totalStudyMinutes' | 'progress'
 >;
 
 function persist(state: StudyStore) {
@@ -36,6 +38,7 @@ function persist(state: StudyStore) {
   const payload: PersistedState = {
     themeMode: state.themeMode,
     dailyNewGoal: state.dailyNewGoal,
+    newGroupIndex: state.newGroupIndex,
     streak: state.streak,
     totalReviewed: state.totalReviewed,
     totalStudyMinutes: state.totalStudyMinutes,
@@ -58,6 +61,7 @@ export const useStudyStore = create<StudyStore>((set, get) => ({
   hydrated: false,
   themeMode: 'light',
   dailyNewGoal: 10,
+  newGroupIndex: 0,
   streak: 9,
   totalReviewed: 126,
   totalStudyMinutes: 248,
@@ -72,6 +76,7 @@ export const useStudyStore = create<StudyStore>((set, get) => ({
           hydrated: true,
           themeMode: parsed.themeMode === 'dark' ? 'dark' : 'light',
           dailyNewGoal: parsed.dailyNewGoal ?? 10,
+          newGroupIndex: parsed.newGroupIndex ?? 0,
           streak: parsed.streak ?? 9,
           totalReviewed: parsed.totalReviewed ?? 126,
           totalStudyMinutes: parsed.totalStudyMinutes ?? 248,
@@ -95,6 +100,13 @@ export const useStudyStore = create<StudyStore>((set, get) => ({
     set((state) => {
       persist({ ...state, themeMode });
       return { themeMode };
+    });
+  },
+  advanceNewGroup: () => {
+    set((state) => {
+      const newGroupIndex = state.newGroupIndex + 1;
+      persist({ ...state, newGroupIndex });
+      return { newGroupIndex };
     });
   },
   recordAnswer: (cardId, correct) => {

@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AnswerOption } from '@/components/AnswerOption';
@@ -16,14 +16,21 @@ import type { MathCard, RecallRating } from '@/types/MathCard';
 
 type QueueItem = { id: string; retry?: boolean };
 
+const GROUP_SIZE = 10;
 const reviewIds = ['trig-identity', 'function-domain', 'function-increasing', 'function-even', 'trig-sin30', 'trig-double-angle', 'sequence-arithmetic-term', 'sequence-arithmetic-sum', 'sequence-geometric-sum', 'log-domain'];
 
 function looksLikeFormula(value: string) {
   return !/[一-龥]/.test(value) && /[a-zA-Zα-ωΑ-Ω=^_√≤≥−/]/.test(value);
 }
 
-function getInitialQueue(mode: string | undefined, focusId: string | undefined): QueueItem[] {
-  const preferred = mode === 'review' ? reviewIds : mathCards.slice(0, 10).map((card) => card.id);
+function getGroupIds(groupIndex: number) {
+  if (!mathCards.length) return [];
+  const start = (groupIndex * GROUP_SIZE) % mathCards.length;
+  return Array.from({ length: Math.min(GROUP_SIZE, mathCards.length) }, (_, offset) => mathCards[(start + offset) % mathCards.length].id);
+}
+
+function getInitialQueue(mode: string | undefined, focusId: string | undefined, groupIndex: number): QueueItem[] {
+  const preferred = mode === 'review' ? reviewIds : getGroupIds(groupIndex);
   const ids = focusId ? [focusId, ...preferred.filter((id) => id !== focusId)] : preferred;
   return ids.map((id) => ({ id }));
 }
@@ -31,10 +38,16 @@ function getInitialQueue(mode: string | undefined, focusId: string | undefined):
 export default function StudyScreen() {
   const params = useLocalSearchParams<{ mode?: string; cardId?: string }>();
   const themeMode = useStudyStore((state) => state.themeMode);
+  const hydrated = useStudyStore((state) => state.hydrated);
+  const storedNewGroupIndex = useStudyStore((state) => state.newGroupIndex);
+  const advanceNewGroup = useStudyStore((state) => state.advanceNewGroup);
   const recordAnswer = useStudyStore((state) => state.recordAnswer);
   const rateCard = useStudyStore((state) => state.rateCard);
   const colors = palette[themeMode];
-  const [queue, setQueue] = useState<QueueItem[]>(() => getInitialQueue(params.mode, params.cardId));
+  const isNewStudy = params.mode !== 'review' && !params.cardId;
+  const [groupIndex, setGroupIndex] = useState(() => (isNewStudy ? storedNewGroupIndex : 0));
+  const [queue, setQueue] = useState<QueueItem[]>(() => getInitialQueue(params.mode, params.cardId, isNewStudy ? storedNewGroupIndex : 0));
+  const hasInitializedSession = useRef(false);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState('');
   const [input, setInput] = useState('');
@@ -44,12 +57,31 @@ export default function StudyScreen() {
   const [summary, setSummary] = useState<{ correct: number; fuzzy: number; forgot: number } | null>(null);
   const [score, setScore] = useState({ correct: 0, wrong: 0 });
 
+  useEffect(() => {
+    if (!hydrated || hasInitializedSession.current) return;
+    hasInitializedSession.current = true;
+    const initialGroupIndex = isNewStudy ? storedNewGroupIndex : 0;
+    setGroupIndex(initialGroupIndex);
+    setQueue(getInitialQueue(params.mode, params.cardId, initialGroupIndex));
+  }, [hydrated, isNewStudy, params.cardId, params.mode, storedNewGroupIndex]);
+
   const item = queue[index];
   const card = useMemo<MathCard | undefined>(() => mathCards.find((candidate) => candidate.id === item?.id), [item?.id]);
 
   if (!card || summary) {
     const result = summary ?? { correct: score.correct, fuzzy: 0, forgot: score.wrong };
-    return <StudySummary result={result} colors={colors} onRestart={() => { setQueue(getInitialQueue(params.mode, params.cardId)); setIndex(0); setSummary(null); setScore({ correct: 0, wrong: 0 }); setRetryAdded({}); setSelected(''); setInput(''); setAnswered(false); }} />;
+    return <StudySummary result={result} colors={colors} onRestart={() => {
+      const nextGroupIndex = isNewStudy ? groupIndex + 1 : groupIndex;
+      setGroupIndex(nextGroupIndex);
+      setQueue(getInitialQueue(params.mode, params.cardId, nextGroupIndex));
+      setIndex(0);
+      setSummary(null);
+      setScore({ correct: 0, wrong: 0 });
+      setRetryAdded({});
+      setSelected('');
+      setInput('');
+      setAnswered(false);
+    }} />;
   }
 
   const submit = (value: string) => {
@@ -71,6 +103,7 @@ export default function StudyScreen() {
   const goNext = (rating: RecallRating) => {
     rateCard(card.id, rating);
     if (index + 1 >= queue.length) {
+      if (isNewStudy) advanceNewGroup();
       setSummary({ correct: score.correct, fuzzy: rating === 'fuzzy' ? 1 : 0, forgot: score.wrong + (rating === 'forgot' ? 1 : 0) });
       return;
     }
@@ -82,7 +115,7 @@ export default function StudyScreen() {
   };
 
   const typeLabel = card.type === 'quick' ? '秒答' : card.type === 'completion' ? '公式补全' : card.type === 'judgement' ? '判断' : card.type === 'graph' ? '看图判断' : card.type === 'concept' ? '题型识别' : '选择';
-  const baseTotal = 10;
+  const baseTotal = Math.max(GROUP_SIZE, queue.length);
   const shownProgress = Math.min(index + 1, baseTotal);
 
   return (
