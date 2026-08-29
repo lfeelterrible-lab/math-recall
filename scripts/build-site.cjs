@@ -7,7 +7,7 @@ const exportDir = path.join(projectRoot, '.expo', 'export-site');
 const distDir = path.join(projectRoot, 'dist');
 const clientDir = path.join(distDir, 'client');
 const serverDir = path.join(distDir, 'server');
-const baseUrl = process.env.EXPO_BASE_URL || '/math-recall';
+const baseUrl = process.env.EXPO_BASE_URL || (process.argv.includes('--root') ? '/' : '/math-recall');
 
 fs.rmSync(exportDir, { recursive: true, force: true });
 fs.rmSync(distDir, { recursive: true, force: true });

@@ -42,6 +42,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "build": "node scripts/build-site.cjs",
+    "build:sites": "node scripts/build-site.cjs --root",
     "typecheck": "tsc --noEmit"
   },
   "private": true
