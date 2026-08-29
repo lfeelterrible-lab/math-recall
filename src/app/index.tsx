@@ -22,10 +22,15 @@ export default function HomeScreen() {
   const dailyNewGoal = useStudyStore((state) => state.dailyNewGoal);
   const streak = useStudyStore((state) => state.streak);
   const progress = useStudyStore((state) => state.progress);
+  const hydrated = useStudyStore((state) => state.hydrated);
+  const getDueCards = useStudyStore((state) => state.getDueCards);
   const colors = palette[themeMode];
   const compact = width < 540;
   const newCount = dailyNewGoal;
-  const dueCount = 18;
+  const dueCount = hydrated ? getDueCards().length : 0;
+  const today = new Date();
+  const weekday = ['日', '一', '二', '三', '四', '五', '六'][today.getDay()];
+  const todayLabel = `${today.getMonth() + 1} 月 ${today.getDate()} 日 · 星期${weekday}`;
 
   const masteryFor = (chapter: string) => {
     const chapterCards = mathCards.filter((card) => card.chapter === chapter);
@@ -36,7 +41,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <Screen title="今天" eyebrow="8 月 28 日 · 星期五">
+    <Screen title="今天" eyebrow={todayLabel}>
       <View style={styles.introRow}>
         <View style={styles.introCopy}>
           <Text style={[styles.greeting, { color: colors.ink }]}>数忆</Text>

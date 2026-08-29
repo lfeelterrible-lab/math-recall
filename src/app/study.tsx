@@ -29,14 +29,14 @@ function getGroupIds(groupIndex: number) {
   return Array.from({ length: Math.min(GROUP_SIZE, mathCards.length) }, (_, offset) => mathCards[(start + offset) % mathCards.length].id);
 }
 
-function getInitialQueue(mode: string | undefined, focusId: string | undefined, groupIndex: number): QueueItem[] {
-  const preferred = mode === 'review' ? reviewIds : getGroupIds(groupIndex);
+function getInitialQueue(mode: string | undefined, focusId: string | undefined, groupIndex: number, reviewCardIds = reviewIds): QueueItem[] {
+  const preferred = mode === 'review' ? reviewCardIds : getGroupIds(groupIndex);
   const ids = focusId ? [focusId, ...preferred.filter((id) => id !== focusId)] : preferred;
   return ids.map((id) => ({ id }));
 }
 
 export default function StudyScreen() {
-  const params = useLocalSearchParams<{ mode?: string; cardId?: string }>();
+  const params = useLocalSearchParams<{ mode?: string; cardId?: string; ids?: string }>();
   const themeMode = useStudyStore((state) => state.themeMode);
   const hydrated = useStudyStore((state) => state.hydrated);
   const storedNewGroupIndex = useStudyStore((state) => state.newGroupIndex);
@@ -45,8 +45,9 @@ export default function StudyScreen() {
   const rateCard = useStudyStore((state) => state.rateCard);
   const colors = palette[themeMode];
   const isNewStudy = params.mode !== 'review' && !params.cardId;
+  const reviewCardIds = useMemo(() => params.ids ? params.ids.split(',').filter(Boolean) : reviewIds, [params.ids]);
   const [groupIndex, setGroupIndex] = useState(() => (isNewStudy ? storedNewGroupIndex : 0));
-  const [queue, setQueue] = useState<QueueItem[]>(() => getInitialQueue(params.mode, params.cardId, isNewStudy ? storedNewGroupIndex : 0));
+  const [queue, setQueue] = useState<QueueItem[]>(() => getInitialQueue(params.mode, params.cardId, isNewStudy ? storedNewGroupIndex : 0, reviewCardIds));
   const hasInitializedSession = useRef(false);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState('');
@@ -62,8 +63,8 @@ export default function StudyScreen() {
     hasInitializedSession.current = true;
     const initialGroupIndex = isNewStudy ? storedNewGroupIndex : 0;
     setGroupIndex(initialGroupIndex);
-    setQueue(getInitialQueue(params.mode, params.cardId, initialGroupIndex));
-  }, [hydrated, isNewStudy, params.cardId, params.mode, storedNewGroupIndex]);
+    setQueue(getInitialQueue(params.mode, params.cardId, initialGroupIndex, reviewCardIds));
+  }, [hydrated, isNewStudy, params.cardId, params.ids, params.mode, reviewCardIds, storedNewGroupIndex]);
 
   const item = queue[index];
   const card = useMemo<MathCard | undefined>(() => mathCards.find((candidate) => candidate.id === item?.id), [item?.id]);
@@ -73,7 +74,7 @@ export default function StudyScreen() {
     return <StudySummary result={result} colors={colors} onRestart={() => {
       const nextGroupIndex = isNewStudy ? groupIndex + 1 : groupIndex;
       setGroupIndex(nextGroupIndex);
-      setQueue(getInitialQueue(params.mode, params.cardId, nextGroupIndex));
+      setQueue(getInitialQueue(params.mode, params.cardId, nextGroupIndex, reviewCardIds));
       setIndex(0);
       setSummary(null);
       setScore({ correct: 0, wrong: 0 });

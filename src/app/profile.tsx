@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Screen, SectionLabel } from '@/components/Screen';
 import { palette, spacing, type } from '@/constants/theme';
+import { mathCards } from '@/data/cards';
 import { useStudyStore } from '@/store/useStudyStore';
 
 export default function ProfileScreen() {
@@ -11,7 +12,12 @@ export default function ProfileScreen() {
   const totalReviewed = useStudyStore((state) => state.totalReviewed);
   const totalStudyMinutes = useStudyStore((state) => state.totalStudyMinutes);
   const streak = useStudyStore((state) => state.streak);
+  const progress = useStudyStore((state) => state.progress);
   const colors = palette[themeMode];
+  const reviewedCards = mathCards.filter((card) => progress[card.id]);
+  const masteryRate = reviewedCards.length
+    ? Math.round(reviewedCards.reduce((sum, card) => sum + (progress[card.id]?.masteryLevel ?? 0) / 4 * 100, 0) / reviewedCards.length)
+    : 72;
 
   return (
     <Screen title="我的" eyebrow="让记忆有自己的节奏">
@@ -24,7 +30,7 @@ export default function ProfileScreen() {
       <View style={styles.metricsGrid}>
         <Metric label="累计学习卡片" value={String(totalReviewed)} colors={colors} />
         <Metric label="本周学习时间" value={Math.round(totalStudyMinutes / 4) + ' min'} colors={colors} />
-        <Metric label="当前掌握率" value="72%" colors={colors} />
+        <Metric label="当前掌握率" value={masteryRate + '%'} colors={colors} />
       </View>
 
       <SectionLabel color={colors.inkFaint}>学习设置</SectionLabel>

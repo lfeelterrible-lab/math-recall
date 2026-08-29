@@ -4,12 +4,13 @@ import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { palette, type } from '@/constants/theme';
+import { mathCards } from '@/data/cards';
 import { useStudyStore } from '@/store/useStudyStore';
 
 const tabItems = [
   { name: 'index', href: '/', icon: '⌂', label: '学习', hint: '今天的 10 张' },
   { name: 'review', href: '/review', icon: '↻', label: '复习', hint: '需要再见的卡' },
-  { name: 'library', href: '/library', icon: '▦', label: '知识库', hint: '40 个知识点' },
+  { name: 'library', href: '/library', icon: '▦', label: '知识库', hint: `${mathCards.length} 个知识点` },
   { name: 'profile', href: '/profile', icon: '○', label: '我的', hint: '你的学习记录' },
 ] as const;
 
@@ -47,11 +48,11 @@ export default function AppTabs() {
 
 function TabButton({ item, compact, colors, isFocused, ...props }: TabTriggerSlotProps & { item: (typeof tabItems)[number]; compact: boolean; colors: (typeof palette)[keyof typeof palette] }) {
   return (
-    <Pressable {...props} style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
-      <View style={[styles.tabButtonInner, { backgroundColor: isFocused ? colors.surfaceMuted : 'transparent', borderColor: isFocused ? colors.line : 'transparent' }]}>
-        <Text style={[styles.icon, { color: isFocused ? colors.green : colors.inkFaint }]}>{item.icon}</Text>
-        <View style={styles.tabCopy}>
-          <Text style={[styles.tabLabel, { color: isFocused ? colors.ink : colors.inkSoft }]}>{item.label}</Text>
+    <Pressable {...props} accessibilityRole="tab" accessibilityLabel={item.label} style={({ pressed }) => [styles.tabButton, compact && styles.tabButtonCompact, pressed && styles.pressed]}>
+      <View style={[styles.tabButtonInner, compact && styles.tabButtonInnerCompact, { backgroundColor: isFocused ? colors.surfaceMuted : 'transparent', borderColor: isFocused ? colors.line : 'transparent' }]}>
+        <Text style={[styles.icon, compact && styles.iconCompact, { color: isFocused ? colors.green : colors.inkFaint }]}>{item.icon}</Text>
+        <View style={[styles.tabCopy, compact && styles.tabCopyCompact]}>
+          <Text style={[styles.tabLabel, compact && styles.tabLabelCompact, { color: isFocused ? colors.ink : colors.inkSoft }]}>{item.label}</Text>
           {!compact ? <Text style={[styles.tabHint, { color: colors.inkFaint }]}>{item.hint}</Text> : null}
         </View>
         {isFocused && !compact ? <View style={[styles.activeDot, { backgroundColor: colors.green }]} /> : null}
@@ -63,12 +64,12 @@ function TabButton({ item, compact, colors, isFocused, ...props }: TabTriggerSlo
 function CustomTabList({ children, compact, colors, hidden, ...props }: TabListProps & { compact: boolean; colors: (typeof palette)[keyof typeof palette]; hidden?: boolean }) {
   return (
     <View {...props} style={[styles.tabList, compact ? styles.tabListCompact : styles.tabListWide, hidden && styles.tabListHidden, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-      <View style={styles.brandBlock}>
+      {!compact ? <View style={styles.brandBlock}>
         <View style={[styles.brandMark, { borderColor: colors.green }]}>
           <Text style={[styles.brandMarkText, { color: colors.green }]}>∑</Text>
         </View>
-        {!compact ? <View><Text style={[styles.brandName, { color: colors.ink }]}>数忆</Text><Text style={[styles.brandMeta, { color: colors.inkFaint }]}>MATHRECALL</Text></View> : null}
-      </View>
+        <View><Text style={[styles.brandName, { color: colors.ink }]}>数忆</Text><Text style={[styles.brandMeta, { color: colors.inkFaint }]}>MATHRECALL</Text></View>
+      </View> : null}
       <View style={[styles.tabItems, compact ? styles.tabItemsCompact : undefined]}>{children}</View>
       {!compact ? (
         <View style={[styles.offlineNote, { borderColor: colors.line }]}>
@@ -97,10 +98,15 @@ const styles = StyleSheet.create({
   tabItems: { gap: 8 },
   tabItemsCompact: { flexDirection: 'row', justifyContent: 'space-around', gap: 3 },
   tabButton: { minWidth: 0 },
+  tabButtonCompact: { flex: 1 },
   tabButtonInner: { minHeight: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderWidth: 1, borderRadius: 15, gap: 11 },
+  tabButtonInnerCompact: { minHeight: 50, flexDirection: 'column', justifyContent: 'center', paddingHorizontal: 4, gap: 1, borderRadius: 14 },
   icon: { width: 22, fontSize: 22, lineHeight: 24, textAlign: 'center' },
+  iconCompact: { width: 18, fontSize: 18, lineHeight: 20 },
   tabCopy: { flex: 1, gap: 3 },
+  tabCopyCompact: { flex: 0, gap: 0 },
   tabLabel: { fontSize: type.small, fontWeight: '800' },
+  tabLabelCompact: { fontSize: 11 },
   tabHint: { fontSize: type.micro },
   activeDot: { width: 6, height: 6, borderRadius: 99 },
   offlineNote: { flexDirection: 'row', gap: 9, marginTop: 'auto', paddingTop: 18, borderTopWidth: 1 },

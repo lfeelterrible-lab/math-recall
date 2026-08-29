@@ -39,15 +39,16 @@ export default function LibraryScreen() {
         <View style={styles.chapterGrid}>
           {chapters.map((chapter, index) => {
             const count = mathCards.filter((card) => card.chapter === chapter).length;
+            const hasCards = count > 0;
             const tone = colors[chapterColors[index]];
             const reviewed = mathCards.filter((card) => card.chapter === chapter && progress[card.id]).length;
             const percent = reviewed ? Math.min(100, reviewed / count * 100) : 60;
             return (
-              <Pressable key={chapter} onPress={() => setSelectedChapter(chapter)} style={({ pressed }) => [styles.chapterCard, { backgroundColor: colors.surface, borderColor: colors.line, opacity: pressed ? 0.78 : 1 }]}>
+              <Pressable key={chapter} disabled={!hasCards} onPress={() => setSelectedChapter(chapter)} style={({ pressed }) => [styles.chapterCard, { backgroundColor: colors.surface, borderColor: colors.line, opacity: !hasCards ? 0.58 : pressed ? 0.78 : 1 }]}>
                 <View style={[styles.chapterLine, { backgroundColor: tone }]} />
                 <Text style={[styles.chapterTitle, { color: colors.ink }]}>{chapter}</Text>
-                <Text style={[styles.chapterMeta, { color: colors.inkFaint }]}>掌握 {reviewed || Math.round(count * 0.6)} / {count}</Text>
-                <View style={[styles.chapterProgress, { backgroundColor: colors.surfaceMuted }]}><View style={[styles.chapterProgressFill, { width: percent + '%', backgroundColor: tone } as never]} /></View>
+                <Text style={[styles.chapterMeta, { color: colors.inkFaint }]}>{hasCards ? `掌握 ${reviewed || Math.round(count * 0.6)} / ${count}` : '即将加入'}</Text>
+                {hasCards ? <View style={[styles.chapterProgress, { backgroundColor: colors.surfaceMuted }]}><View style={[styles.chapterProgressFill, { width: percent + '%', backgroundColor: tone } as never]} /></View> : null}
               </Pressable>
             );
           })}

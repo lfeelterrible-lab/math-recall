@@ -1,33 +1,42 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { FormulaView } from '@/components/FormulaView';
 import { Screen, SectionLabel } from '@/components/Screen';
 import { palette, spacing, type } from '@/constants/theme';
 import { mathCards } from '@/data/cards';
 import { useStudyStore } from '@/store/useStudyStore';
 
-const reviewChapters = [
-  { name: '函数', count: 8, tone: 'blue' as const },
-  { name: '三角函数', count: 6, tone: 'green' as const },
-  { name: '数列', count: 4, tone: 'orange' as const },
-  { name: '解析几何', count: 3, tone: 'blue' as const },
-  { name: '其他', count: 3, tone: 'green' as const },
+const reviewGroups = [
+  { name: '函数', chapters: ['函数'], tone: 'blue' as const },
+  { name: '三角函数', chapters: ['三角函数'], tone: 'green' as const },
+  { name: '数列', chapters: ['数列'], tone: 'orange' as const },
+  { name: '解析几何', chapters: ['解析几何'], tone: 'blue' as const },
+  { name: '其他', chapters: ['集合与逻辑', '向量', '概率统计', '导数'], tone: 'green' as const },
 ];
-
-const hardIds = ['log-domain', 'function-odd', 'sequence-geometric-sum', 'vector-dot'];
 
 export default function ReviewScreen() {
   const themeMode = useStudyStore((state) => state.themeMode);
   const colors = palette[themeMode];
+  const hydrated = useStudyStore((state) => state.hydrated);
   const progress = useStudyStore((state) => state.progress);
-  const hardCards = hardIds.map((id) => mathCards.find((card) => card.id === id)).filter(Boolean);
+  const getDueCards = useStudyStore((state) => state.getDueCards);
+  const dueCards = hydrated ? getDueCards() : [];
+  const reviewChapters = reviewGroups.map((group) => ({
+    ...group,
+    count: dueCards.filter((card) => group.chapters.includes(card.chapter)).length,
+  }));
+  const hardCards = mathCards
+    .filter((card) => (progress[card.id]?.wrongCount ?? 0) > 0)
+    .sort((a, b) => (progress[b.id]?.wrongCount ?? 0) - (progress[a.id]?.wrongCount ?? 0))
+    .slice(0, 5);
+  const dueChapterCount = reviewChapters.filter((chapter) => chapter.count > 0).length;
+  const reviewMinutes = Math.max(1, Math.ceil(dueCards.length * 0.5));
 
   return (
     <Screen title="复习" eyebrow="把快要忘的，再见一次">
       <View style={[styles.dueHero, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-        <View><Text style={[styles.heroKicker, { color: colors.green }]}>今天待复习</Text><Text style={[styles.heroNumber, { color: colors.ink }]}>24</Text><Text style={[styles.heroMeta, { color: colors.inkSoft }]}>分散在 5 个章节里</Text></View>
-        <View style={[styles.heroRing, { borderColor: colors.green }]}><Text style={[styles.heroRingText, { color: colors.green }]}>12<Text style={styles.heroRingUnit}> min</Text></Text></View>
+        <View><Text style={[styles.heroKicker, { color: colors.green }]}>今天待复习</Text><Text style={[styles.heroNumber, { color: colors.ink }]}>{dueCards.length}</Text><Text style={[styles.heroMeta, { color: colors.inkSoft }]}>分散在 {dueChapterCount} 个章节里</Text></View>
+        <View style={[styles.heroRing, { borderColor: colors.green }]}><Text style={[styles.heroRingText, { color: colors.green }]}>{reviewMinutes}<Text style={styles.heroRingUnit}> min</Text></Text></View>
       </View>
 
       <SectionLabel color={colors.inkFaint}>按章节</SectionLabel>
@@ -40,32 +49,30 @@ export default function ReviewScreen() {
               <Text style={[styles.chapterName, { color: colors.ink }]}>{chapter.name}</Text>
               <Text style={[styles.chapterCount, { color: tone }]}>{chapter.count}</Text>
               <Text style={[styles.chapterUnit, { color: colors.inkFaint }]}>张</Text>
-              <Text style={[styles.chevron, { color: colors.inkFaint }]}>›</Text>
             </View>
           );
         })}
       </View>
 
-      <Pressable onPress={() => router.push('/study?mode=review')} style={({ pressed }) => [styles.startButton, { backgroundColor: colors.green, opacity: pressed ? 0.84 : 1 }]}>
-        <Text style={styles.startButtonText}>开始复习</Text><Text style={styles.startButtonArrow}>→</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={dueCards.length ? `开始复习，${dueCards.length} 张` : '今天已复习完'} accessibilityState={{ disabled: !dueCards.length }} disabled={!dueCards.length} onPress={() => router.push({ pathname: '/study', params: { mode: 'review', ids: dueCards.map((card) => card.id).join(',') } })} style={({ pressed }) => [styles.startButton, { backgroundColor: colors.green, opacity: !dueCards.length ? 0.45 : pressed ? 0.84 : 1 }]}>
+        <Text style={styles.startButtonText}>{dueCards.length ? '开始复习' : '今天已复习完'}</Text><Text style={styles.startButtonArrow}>→</Text>
       </Pressable>
 
       <View style={styles.hardHeader}><SectionLabel color={colors.inkFaint}>最近总错</SectionLabel><Text style={[styles.hardHint, { color: colors.inkFaint }]}>自动统计</Text></View>
       <View style={[styles.hardList, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-        {hardCards.map((card, index) => card ? (
+        {hardCards.length ? hardCards.map((card, index) => (
           <Pressable key={card.id} onPress={() => router.push({ pathname: '/study', params: { cardId: card.id } })} style={({ pressed }) => [styles.hardRow, { borderBottomColor: colors.line, opacity: pressed ? 0.72 : 1 }]}>
             <Text style={[styles.hardIndex, { color: colors.red }]}>{String(index + 1).padStart(2, '0')}</Text>
             <View style={styles.hardCopy}><Text style={[styles.hardTitle, { color: colors.ink }]}>{card.title}</Text><Text style={[styles.hardTopic, { color: colors.inkFaint }]}>{card.chapter} · {card.topic}</Text></View>
-            <Text style={[styles.hardCount, { color: colors.red }]}>{Math.max(2, progress[card.id]?.wrongCount ?? 0)} 次</Text>
+            <Text style={[styles.hardCount, { color: colors.red }]}>{progress[card.id]?.wrongCount ?? 0} 次</Text>
           </Pressable>
-        ) : null)}
+        )) : <Text style={[styles.emptyHard, { color: colors.inkSoft }]}>暂时没有错题，先学一组，错点会自动出现在这里。</Text>}
       </View>
 
       <View style={[styles.scheduleNote, { backgroundColor: colors.blueSoft }]}>
         <Text style={[styles.scheduleFormula, { color: colors.blue }]}>10 min → 1 天 → 3 天 → 7 天</Text>
         <Text style={[styles.scheduleCopy, { color: colors.inkSoft }]}>每张卡有自己的复习周期，记住的会慢慢走远。</Text>
       </View>
-      <FormulaView formula={'f(-x)=f(x)'} size="small" color={colors.inkFaint} />
     </Screen>
   );
 }
@@ -84,8 +91,7 @@ const styles = StyleSheet.create({
   chapterName: { flex: 1, fontSize: type.body, fontWeight: '700' },
   chapterCount: { fontSize: type.body, fontWeight: '800' },
   chapterUnit: { fontSize: type.micro },
-  chevron: { marginLeft: 4, fontSize: 24, fontWeight: '300' },
-  startButton: { minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg, marginBottom: spacing.xxl, paddingHorizontal: spacing.lg, borderRadius: 16 },
+  startButton: { minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg, marginBottom: spacing.lg, paddingHorizontal: spacing.lg, borderRadius: 16 },
   startButtonText: { color: '#FFFFFF', fontSize: type.body, fontWeight: '800' },
   startButtonArrow: { color: '#FFFFFF', fontSize: 24 },
   hardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -97,6 +103,7 @@ const styles = StyleSheet.create({
   hardTitle: { fontSize: type.body, fontWeight: '700' },
   hardTopic: { fontSize: type.micro },
   hardCount: { fontSize: type.micro, fontWeight: '800' },
+  emptyHard: { paddingVertical: 24, textAlign: 'center', fontSize: type.small, lineHeight: 21 },
   scheduleNote: { marginTop: spacing.lg, padding: spacing.md, borderRadius: 16, gap: 6 },
   scheduleFormula: { fontSize: type.small, fontWeight: '800', letterSpacing: 0.5 },
   scheduleCopy: { fontSize: type.micro, lineHeight: 18 },

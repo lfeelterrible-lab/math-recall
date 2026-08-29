@@ -15,6 +15,8 @@ export function RecallButtons({ onRate, themeMode }: { onRate: (rating: RecallRa
       {items.map((item) => (
         <Pressable
           key={item.rating}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.label}，${item.detail}`}
           onPress={() => onRate(item.rating)}
           style={({ pressed }) => [styles.button, { borderColor: colors.line, backgroundColor: colors.surface, opacity: pressed ? 0.78 : 1 }]}>
           <Text style={[styles.label, { color: item.color }]}>{item.label}</Text>
