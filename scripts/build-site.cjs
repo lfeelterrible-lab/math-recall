@@ -7,7 +7,18 @@ const exportDir = path.join(projectRoot, '.expo', 'export-site');
 const distDir = path.join(projectRoot, 'dist');
 const clientDir = path.join(distDir, 'client');
 const serverDir = path.join(distDir, 'server');
-const baseUrl = process.env.EXPO_BASE_URL || (process.argv.includes('--root') ? '/' : '/math-recall');
+const rootBuild = process.argv.includes('--root');
+const baseUrl = process.env.EXPO_BASE_URL || (rootBuild ? '/' : '/math-recall');
+const appConfigPath = path.join(projectRoot, 'app.json');
+let originalAppConfig;
+
+if (rootBuild) {
+  originalAppConfig = fs.readFileSync(appConfigPath);
+  const appConfig = JSON.parse(originalAppConfig.toString('utf8'));
+  const expoConfig = appConfig.expo ?? appConfig;
+  expoConfig.experiments = { ...expoConfig.experiments, baseUrl: '/' };
+  fs.writeFileSync(appConfigPath, JSON.stringify(appConfig, null, 2));
+}
 
 fs.rmSync(exportDir, { recursive: true, force: true });
 fs.rmSync(distDir, { recursive: true, force: true });
@@ -23,6 +34,10 @@ const result = spawnSync(
     shell: process.platform === 'win32',
   },
 );
+
+if (originalAppConfig) {
+  fs.writeFileSync(appConfigPath, originalAppConfig);
+}
 
 if (result.error) {
   console.error(result.error.message);
